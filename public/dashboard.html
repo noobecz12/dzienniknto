@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Pracownika</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="gradient-bg">
+  <div class="navbar">
+    <h2>👷 Panel Pracownika</h2>
+    <a href="https://panel.e-innova.pl/logout" class="btn-secondary">Wyloguj</a>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h3>Twoje statystyki</h3>
+      <div id="stats"></div>
+      <div class="progress"><div id="progress-bar"></div></div>
+    </div>
+
+    <div class="card">
+      <h3>Historia sesji</h3>
+      <table id="sessions">
+        <thead><tr><th>Sesja</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://panel.e-innova.pl";
+
+    async function loadData() {
+      const res = await fetch(`${API_URL}/api/workerData`, { credentials: "include" });
+      const data = await res.json();
+      const s = document.getElementById('stats');
+      s.innerHTML = `
+        <p><b>Obecność:</b> ${data.procent}% (${data.obecnosci}/${data.razem} sesji)</p>
+        <p><b>Plusy:</b> ${data.stats.plusy}</p>
+        <p><b>Minusy:</b> ${data.stats.minusy}</p>
+        <p><b>Wypłata:</b> ${data.stats.robux} Robux</p>
+      `;
+      document.getElementById('progress-bar').style.width = data.procent + '%';
+
+      const tbody = document.querySelector('#sessions tbody');
+      tbody.innerHTML = '';
+      data.sessions.forEach(ses => {
+        const status = ses.attendance && ses.attendance[data.id] || '—';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${ses.name}</td><td class="status ${status}">${status}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    loadData();
+  </script>
+</body>
+</html>

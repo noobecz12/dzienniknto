@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Admina</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="gradient-bg">
+  <div class="navbar">
+    <h2>👑 Panel Admina</h2>
+    <a href="https://panel.e-innova.pl/logout" class="btn-secondary">Wyloguj</a>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h3>Dodaj pracownika</h3>
+      <input type="text" id="workerId" placeholder="Discord ID pracownika">
+      <button class="btn-primary" onclick="addWorker()">➕ Dodaj</button>
+    </div>
+
+    <div class="card">
+      <h3>Sesje</h3>
+      <button class="btn-primary" onclick="createSession()">📅 Utwórz nową sesję</button>
+      <select id="sessionSelect"></select>
+    </div>
+
+    <div class="card">
+      <h3>Lista obecności</h3>
+      <table id="attendanceTable"><thead><tr><th>Użytkownik</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>Logi</h3>
+      <div id="logs"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://panel.e-innova.pl";
+
+    async function addWorker() {
+      const id = document.getElementById('workerId').value;
+      if (!id) return alert('Podaj ID');
+      await fetch(`${API_URL}/api/addWorker`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discordId: id }),
+        credentials: "include"
+      });
+      alert('Dodano pracownika');
+      loadData();
+    }
+
+    async function createSession() {
+      const res = await fetch(`${API_URL}/api/createSession`, { method: 'POST', credentials: "include" });
+      const data = await res.json();
+      alert(`Utworzono ${data.sessionNum}`);
+      loadData();
+    }
+
+    async function markAttendance(userId, status, sessionId) {
+      await fetch(`${API_URL}/api/markAttendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, status, sessionId }),
+        credentials: "include"
+      });
+      loadData();
+    }
+
+    async function loadData() {
+      const res = await fetch(`${API_URL}/api/adminData`, { credentials: "include" });
+      const data = await res.json();
+
+      const select = document.getElementById('sessionSelect');
+      select.innerHTML = data.sessions.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+      const sessId = parseInt(select.value);
+      const tbody = document.querySelector('#attendanceTable tbody');
+      tbody.innerHTML = '';
+      Object.entries(data.users).forEach(([id, u]) => {
+        if (u.role !== 'pracownik') return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u.name} (${id})</td>
+          <td>
+            <button onclick="markAttendance('${id}','obecny',${sessId})" class="btn-status green">✔️</button>
+            <button onclick="markAttendance('${id}','spóźnienie',${sessId})" class="btn-status yellow">⏰</button>
+            <button onclick="markAttendance('${id}','wyszedł',${sessId})" class="btn-status blue">🚪</button>
+            <button onclick="markAttendance('${id}','nieobecny',${sessId})" class="btn-status red">❌</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+
+      const logs = document.getElementById('logs');
+      logs.innerHTML = data.logs.slice(-20).reverse().map(l => `<p>[${l.time}] ${l.session} — ${l.userId}: ${l.status}</p>`).join('');
+    }
+
+    document.getElementById('sessionSelect').addEventListener('change', loadData);
+    loadData();
+  </script>
+</body>
+</html>
